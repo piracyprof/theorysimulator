@@ -2,7 +2,7 @@
 
 An interactive, five-prong stress-test of the threshold model in Wendy A. Bradley, "Survival of the Most Specific? Real Options for Firms with Big Data" (working paper, under review).
 
-**Live page:** https://YOUR-USERNAME.github.io/threshold-stress-test/
+**Live page:** https://piracyprof.github.io/theorysimulator/
 
 ## What this is
 
