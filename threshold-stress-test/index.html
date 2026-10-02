@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Survival of the Most Specific: an interactive threshold model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#f5f7fa; --panel:#ffffff; --ink:#1c2333; --muted:#5f6878; --rule:#d9dee7;
+  --stay:#23785c; --stay-soft:#d5ece3; --exit:#953a5a; --exit-soft:#f1dbe3;
+  --thresh:#2b4f9e; --accent-soft:#e3e9f6;
+  --serif:"Source Serif 4", Georgia, "Times New Roman", serif;
+  --sans:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#141922; --panel:#1b2230; --ink:#e7ebf2; --muted:#9aa4b5; --rule:#2e3748;
+    --stay:#5cc49c; --stay-soft:#1d3b31; --exit:#e0839f; --exit-soft:#43232f;
+    --thresh:#8aa8ee; --accent-soft:#25304a;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#141922; --panel:#1b2230; --ink:#e7ebf2; --muted:#9aa4b5; --rule:#2e3748;
+  --stay:#5cc49c; --stay-soft:#1d3b31; --exit:#e0839f; --exit-soft:#43232f;
+  --thresh:#8aa8ee; --accent-soft:#25304a;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5}
+h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.2;margin:0}
+h1{font-size:clamp(1.6rem,3.4vw,2.4rem);max-width:28ch}
+h2{font-size:1.3rem;margin-bottom:.4rem}
+h3{font-size:1.05rem;margin-bottom:.3rem}
+p{margin:.4rem 0;max-width:72ch}
+.wrap{max-width:1240px;margin:0 auto;padding:1.5rem 1.25rem 3rem}
+header.top{padding:1.25rem 0 1rem;border-bottom:1px solid var(--rule);margin-bottom:1.25rem}
+.byline{color:var(--muted);font-size:.9rem;margin-top:.5rem}
+.tabs{display:flex;gap:.25rem;margin:1rem 0 0}
+.tabs button{font:inherit;font-weight:500;border:1px solid var(--rule);background:transparent;color:var(--muted);padding:.45rem .9rem;border-radius:6px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--thresh);outline-offset:2px}
+.grid{display:grid;grid-template-columns:330px minmax(0,1fr);gap:1.5rem;align-items:start}
+@media (max-width:880px){.grid{grid-template-columns:1fr}}
+aside.controls{position:sticky;top:calc(env(safe-area-inset-top,0px) + 1rem);background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:1rem 1rem .5rem;max-height:calc(100vh - 2rem);overflow:auto}
+@media (max-width:880px){aside.controls{position:static;max-height:none}}
+.ctl{margin-bottom:.85rem}
+.ctl label{display:flex;justify-content:space-between;gap:.5rem;font-size:.88rem}
+.ctl label span.v{font-variant-numeric:tabular-nums;color:var(--thresh);font-weight:600}
+.ctl small{display:block;color:var(--muted);font-size:.78rem;line-height:1.35}
+input[type=range]{width:100%;accent-color:var(--thresh)}
+details{border-top:1px solid var(--rule);padding:.6rem 0}
+summary{cursor:pointer;font-weight:600;font-size:.9rem}
+.section{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:1.1rem 1.2rem;margin-bottom:1.25rem}
+.prong{color:var(--muted);font-size:.85rem;margin-bottom:.2rem}
+.verdict{display:flex;flex-wrap:wrap;align-items:baseline;gap:.4rem 1rem}
+.verdict .big{font-family:var(--serif);font-size:clamp(1.8rem,4vw,2.6rem);font-weight:600}
+.stay{color:var(--stay)} .exit{color:var(--exit)}
+.svgbox{width:100%;overflow-x:auto}
+svg{display:block;width:100%;height:auto}
+svg text{font-family:var(--sans);fill:var(--muted);font-size:12px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media (max-width:700px){.two{grid-template-columns:1fr}}
+.legend{display:flex;flex-wrap:wrap;gap:.9rem;font-size:.82rem;color:var(--muted);margin:.3rem 0 .2rem}
+.sw{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:.3rem;border-radius:2px}
+.checks{list-style:none;padding:0;margin:.4rem 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.3rem .9rem;font-size:.9rem}
+.checks li{display:flex;gap:.45rem;align-items:baseline}
+.ok{color:var(--stay);font-weight:700} .bad{color:var(--exit);font-weight:700}
+table.props{width:100%;border-collapse:collapse;font-size:.9rem}
+table.props th,table.props td{text-align:left;padding:.5rem .4rem;border-bottom:1px solid var(--rule);vertical-align:top}
+table.props th{font-weight:600;color:var(--muted);font-size:.8rem}
+.share{font-variant-numeric:tabular-nums;font-weight:600}
+.bar{height:6px;background:var(--rule);border-radius:3px;overflow:hidden;margin-top:.3rem;min-width:80px}
+.bar i{display:block;height:100%;background:var(--thresh)}
+.heatwrap{display:grid;grid-template-columns:auto 1fr;gap:.4rem;align-items:center}
+canvas{width:100%;max-width:520px;aspect-ratio:1/1;border:1px solid var(--rule);border-radius:4px;display:block}
+.seg{display:flex;flex-wrap:wrap;gap:.35rem;margin:.35rem 0 1rem}
+.seg button{font:inherit;font-size:.9rem;border:1px solid var(--rule);background:var(--panel);color:var(--ink);padding:.4rem .8rem;border-radius:999px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--thresh);border-color:var(--thresh);color:#fff}
+.q{font-weight:500;margin-top:.2rem}
+pre{background:var(--accent-soft);padding:.8rem;border-radius:6px;overflow-x:auto;font-size:.8rem;line-height:1.4}
+.note{color:var(--muted);font-size:.85rem}
+footer{color:var(--muted);font-size:.85rem;border-top:1px solid var(--rule);padding-top:1rem;margin-top:1rem}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <h1>Survival of the most specific: when does a data-rich firm stay, and when does it leave?</h1>
+  <p class="byline">An interactive version of the threshold model in Wendy A. Bradley, "Survival of the Most Specific? Real Options for Firms with Big Data" (working paper, under review). Prototype for the five-prong theory stress-test.</p>
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-r" aria-selected="true" aria-controls="view-r">Researcher view</button>
+    <button role="tab" id="tab-m" aria-selected="false" aria-controls="view-m">Manager view</button>
+  </div>
+</header>
+
+<!-- RESEARCHER VIEW -->
+<div id="view-r" role="tabpanel" aria-labelledby="tab-r">
+<div class="grid">
+<aside class="controls" aria-label="Model controls">
+  <p class="prong">Prong 1: model variables</p>
+  <div id="vars"></div>
+  <details>
+    <summary>Functional forms (the specification)</summary>
+    <p class="note">The paper states only the direction of each effect. These dials choose one concrete version of the model. Prong 2 checks that your choice still obeys the paper's assumptions.</p>
+    <div id="spec"></div>
+  </details>
+  <details>
+    <summary>Uncertainty and the value of waiting</summary>
+    <p class="note">Footnote 3: uncertainty lets a firm wait below the threshold. The propositions hold unless the value of waiting varies enough with portfolio composition.</p>
+    <div id="unc"></div>
+  </details>
+  <p style="margin:.6rem 0 .8rem"><button id="reset" class="tabsbtn" style="font:inherit;font-size:.85rem;border:1px solid var(--rule);background:transparent;color:var(--ink);padding:.35rem .7rem;border-radius:6px;cursor:pointer">Reset to defaults</button></p>
+</aside>
+
+<main>
+  <section class="section" aria-live="polite">
+    <div class="verdict">
+      <span class="big" id="verdict">Stays</span>
+      <span id="verdictTxt" class="note"></span>
+    </div>
+    <p class="note">A firm exits when its focal-market value (PM<sub>C</sub>) falls below its exit point: the survival threshold T<sub>C</sub> minus any value of waiting.</p>
+    <div class="svgbox"><svg id="waterfall" viewBox="0 0 720 230" role="img" aria-label="Decomposition of the survival threshold"></svg></div>
+  </section>
+
+  <section class="section">
+    <p class="prong">Prong 2: sign restrictions</p>
+    <h2>Does this version obey the paper's assumptions?</h2>
+    <p class="note">Each restriction is checked numerically at the current point. A specification that fails any check is not a valid version of the theory, and the tool would reject it.</p>
+    <ul class="checks" id="checks"></ul>
+  </section>
+
+  <section class="section">
+    <p class="prong">Prong 3: propositions</p>
+    <h2>Do the propositions hold here, and how robustly?</h2>
+    <p class="note">"This version" uses your dials. "Across versions" draws <span id="nSpecs"></span> random specifications that satisfy every sign restriction (fixed seed, so results reproduce) and evaluates them at your firm's position.</p>
+    <table class="props">
+      <thead><tr><th>Claim</th><th>This version</th><th>Across versions</th></tr></thead>
+      <tbody id="propRows"></tbody>
+    </table>
+  </section>
+
+  <section class="section">
+    <p class="prong">Prong 4: boundary conditions</p>
+    <h2>Where does the prediction change?</h2>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--stay)"></i>Focal-market value PM<sub>C</sub></span>
+      <span><i class="sw" style="background:var(--thresh)"></i>Exit point (T<sub>C</sub> minus waiting value)</span>
+      <span><i class="sw" style="background:var(--exit-soft);height:10px"></i>Exit region</span>
+    </div>
+    <div class="two">
+      <div><h3>Proposition 1: generalizable share</h3><div class="svgbox"><svg id="chartX1" viewBox="0 0 420 260" role="img" aria-label="Value and exit point against generalizable share"></svg></div></div>
+      <div><h3>Proposition 2: portfolio size</h3><div class="svgbox"><svg id="chartX3" viewBox="0 0 420 260" role="img" aria-label="Value and exit point against portfolio size"></svg></div></div>
+    </div>
+    <h3 style="margin-top:1rem">Composition and size together</h3>
+    <div class="seg" role="group" aria-label="Map type">
+      <button id="mapOne" aria-pressed="true">This version</button>
+      <button id="mapAll" aria-pressed="false">Share of versions where the firm stays</button>
+    </div>
+    <div class="heatwrap">
+      <div class="note" style="writing-mode:vertical-rl;transform:rotate(180deg)">Portfolio size x₃ (0 to 10)</div>
+      <canvas id="heat" width="400" height="400" aria-label="Map of stay and exit regions"></canvas>
+      <div></div><div class="note">Generalizable share x₁ (0 to 1). The ring marks your firm. <span id="heatLegend"></span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <p class="prong">Specification file</p>
+    <h2>The machine-readable version of this model</h2>
+    <p class="note">Every simulation is built from one file like this, so different users test the same theory. Copy it to reproduce exactly what you see.</p>
+    <pre id="specJson"></pre>
+  </section>
+</main>
+</div>
+</div>
+
+<!-- MANAGER VIEW -->
+<div id="view-m" role="tabpanel" aria-labelledby="tab-m" hidden>
+<div class="grid">
+<aside class="controls" aria-label="Describe your firm">
+  <p class="prong">Prong 5: practitioner view</p>
+  <h3>Describe your business</h3>
+  <div id="mgrQs"></div>
+</aside>
+<main>
+  <section class="section" aria-live="polite">
+    <div class="verdict"><span class="big" id="mVerdict"></span></div>
+    <p id="mText"></p>
+    <p id="mRobust"></p>
+    <div class="bar" style="max-width:420px"><i id="mBar"></i></div>
+  </section>
+  <section class="section">
+    <h2>What would change the answer</h2>
+    <p class="note">Each line changes one answer and keeps the rest.</p>
+    <ul id="mFlips"></ul>
+  </section>
+  <section class="section">
+    <h2>The idea behind it</h2>
+    <p>Some data is useful only in the market where you collected it. Other data, like location or transaction records, can power businesses elsewhere. The theory predicts that firms whose data travels well may leave markets where they are doing fine, because the outside opportunities are worth more. Firms whose data is tied to one market may stay even when results are weak.</p>
+    <p>Niantic is one illustration: it sold a profitable games business to build mapping tools on the location data those games produced.</p>
+  </section>
+  <section class="section">
+    <h2>Help test it</h2>
+    <p>Researchers rarely see what data firms hold, so this theory has not been tested. Your firm may have exactly the information needed: what data you hold, where else it could be used, what limits its reuse, and which markets you have entered or left. If you would like to explore a research collaboration, contact Wendy A. Bradley at San José State University.</p>
+  </section>
+</main>
+</div>
+</div>
+
+<footer class="wrap" style="padding-top:0">
+  Model: T<sub>C</sub> = PM<sub>A</sub>(x₁x₃) + DV<sub>A</sub>(x₁x₃, τ) − DV<sub>C</sub>(x₂, τ) − RC(x₄), with x₂ = (1 − x₁)x₃, adapted from Gimeno, Folta, Cooper, and Woo (1997). Illustrative prototype; functional forms and ranges are modeling choices, not estimates.
+</footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+// ---------- state ----------
+var DEF = {
+  x1:0.5, x3:5, x4:4, tau:1.5, b:0,
+  aC:0.6, thC:0.8, g:0.6,
+  aA:1.5, thA:0.8,
+  dA:1.0, thD:0.8, kA:0.3,
+  dC:0.8, thE:0.8, kC:0.3,
+  r:0.3,
+  sigma:0, w0:0.2, m:0
+};
+var S = Object.assign({}, DEF);
+
+var VARS = [
+  ["x1","Generalizable share of data (x₁)",0,1,0.01,"Share of the data portfolio with value outside the focal market."],
+  ["x3","Portfolio size (x₃)",0,10,0.1,"Total stock of data the firm holds."],
+  ["x4","Redeployment frictions (x₄)",0,10,0.1,"Technical, legal, consent, and contractual costs of moving data to new uses."],
+  ["tau","Industry maturity (τ)",0,4,0.05,"How developed the focal and related markets' data ecosystems are."],
+  ["b","Non-data focal performance",-2,3,0.05,"Baseline value of the focal business apart from its data."]
+];
+var SPEC = [
+  ["aC","Scale of data's focal value",0,2,0.05,"PM_C"],
+  ["thC","Shape of focal value in size",0.3,1.8,0.05,"Below 1 is concave, above 1 is convex."],
+  ["g","Focal value of generalizable vs. specific data",0,1.5,0.05,"Below 1: generalizable data helps the focal market less."],
+  ["aA","Scale of best alternative market (PM_A)",0,3,0.05,""],
+  ["thA","Shape of PM_A",0.3,1.8,0.05,""],
+  ["dA","Scale of alternative-use data value (DV_A)",0,3,0.05,""],
+  ["thD","Shape of DV_A",0.3,1.8,0.05,""],
+  ["kA","Decline of DV_A with maturity",-0.5,1,0.05,"The paper assumes this is positive. Push it below zero to see Prong 2 reject the specification."],
+  ["dC","Scale of specific data's forward value (DV_C)",0,3,0.05,""],
+  ["thE","Shape of DV_C",0.3,1.8,0.05,""],
+  ["kC","Rise of DV_C with maturity",-0.5,1,0.05,"Also assumed positive."],
+  ["r","Cost per unit of friction (RC)",0,1,0.01,""]
+];
+var UNC = [
+  ["sigma","Uncertainty (σ)",0,2,0.05,"Zero is the paper's no-uncertainty benchmark."],
+  ["w0","Baseline value of waiting",0,1,0.01,""],
+  ["m","How waiting value varies with generalizable share",-1.5,1.5,0.05,"Zero means composition does not affect waiting value. Large values test footnote 3."]
+];
+
+// ---------- model ----------
+function pw(x,e){ return x<=0?0:Math.pow(x,e); }
+function parts(s,p){
+  var gen=s.x1*s.x3, spec=(1-s.x1)*s.x3;
+  var PMC = p.b + p.aC*pw(s.x3,p.thC)*(1 - s.x1 + p.g*s.x1);
+  var PMA = p.aA*pw(gen,p.thA);
+  var DVA = p.dA*pw(gen,p.thD)*Math.exp(-p.kA*s.tau);
+  var DVC = p.dC*pw(spec,p.thE)*(1 + p.kC*s.tau);
+  var RC = p.r*s.x4;
+  var TC = PMA + DVA - DVC - RC;
+  var W = Math.max(0, s.sigma*s.sigma*(p.w0 + p.m*s.x1));
+  return {PMC:PMC,PMA:PMA,DVA:DVA,DVC:DVC,RC:RC,TC:TC,W:W,EP:TC-W,gap:PMC-(TC-W)};
+}
+function M(o){ return Object.assign({},S,o||{}); } // merged point+params
+var LIM={x1:[0,1],x3:[0,10],x4:[0,10],tau:[0,4]};
+function deriv(fn,obj,key){
+  var h=1e-3, lo=LIM[key]?LIM[key][0]:-1e9, hi=LIM[key]?LIM[key][1]:1e9;
+  var a=Math.max(lo,obj[key]-h), c=Math.min(hi,obj[key]+h);
+  if(c-a<1e-9) return 0;
+  var o1=Object.assign({},obj); o1[key]=a;
+  var o2=Object.assign({},obj); o2[key]=c;
+  return (fn(o2)-fn(o1))/(c-a);
+}
+// exit tendency = EP - PMC (positive & rising => more exit)
+function exitTend(o){ var q=parts(o,o); return q.EP-q.PMC; }
+
+// ---------- seeded sampling of admissible specs ----------
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+var RANGES={aC:[0.3,1.5],thC:[0.4,1.6],g:[0,1.5],aA:[0.3,2.5],thA:[0.4,1.6],dA:[0.3,2.5],thD:[0.4,1.6],kA:[0,0.8],dC:[0.3,2.5],thE:[0.4,1.6],kC:[0,0.8],r:[0.05,0.6],w0:[0,0.5],m:[-1,1]};
+var SEED=2026, NSPEC=1500;
+function sampleSpecs(n,seed){
+  var rnd=mulberry32(seed), out=[];
+  for(var i=0;i<n;i++){ var p={}; for(var k in RANGES){var r=RANGES[k]; p[k]=r[0]+(r[1]-r[0])*rnd();} out.push(p); }
+  return out;
+}
+var SPECS=sampleSpecs(NSPEC,SEED);
+var MAPSPECS=SPECS.slice(0,160);
+function pointOf(s){ return {x1:s.x1,x3:s.x3,x4:s.x4,tau:s.tau,b:s.b,sigma:s.sigma}; }
+
+// ---------- controls ----------
+function fmt(v,step){ var d=step<0.1?2:(step<1?1:0); return (+v).toFixed(d); }
+function buildCtl(host,list){
+  var el=document.getElementById(host);
+  list.forEach(function(c){
+    var k=c[0], div=document.createElement("div"); div.className="ctl";
+    div.innerHTML='<label for="in-'+k+'"><span>'+c[1]+'</span><span class="v" id="v-'+k+'"></span></label>'+
+      '<input type="range" id="in-'+k+'" min="'+c[2]+'" max="'+c[3]+'" step="'+c[4]+'">'+(c[5]?'<small>'+c[5]+'</small>':'');
+    el.appendChild(div);
+    var inp=div.querySelector("input");
+    inp.addEventListener("input",function(){ S[k]=parseFloat(inp.value); schedule(); });
+  });
+}
+var ALLCTL=VARS.concat(SPEC,UNC);
+function syncCtls(){
+  ALLCTL.forEach(function(c){ var k=c[0]; var inp=document.getElementById("in-"+k); if(inp){ inp.value=S[k]; document.getElementById("v-"+k).textContent=fmt(S[k],c[4]); } });
+}
+buildCtl("vars",VARS); buildCtl("spec",SPEC); buildCtl("unc",UNC);
+document.getElementById("reset").addEventListener("click",function(){ S=Object.assign({},DEF); syncCtls(); schedule(); });
+document.getElementById("nSpecs").textContent=NSPEC.toLocaleString();
+
+// ---------- rendering helpers ----------
+function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function svgEl(tag,attrs,text){ var e=document.createElementNS("http://www.w3.org/2000/svg",tag); for(var a in attrs) e.setAttribute(a,attrs[a]); if(text!=null) e.textContent=text; return e; }
+function niceTicks(lo,hi,n){ var span=hi-lo||1, step=Math.pow(10,Math.floor(Math.log10(span/n))); var err=span/n/step; if(err>=7.5)step*=10; else if(err>=3.5)step*=5; else if(err>=1.5)step*=2; var t=[]; for(var v=Math.ceil(lo/step)*step; v<=hi+1e-9; v+=step) t.push(+v.toFixed(10)); return t; }
+
+function lineChart(id,key,xmax,xlabel){
+  var svg=document.getElementById(id); svg.innerHTML="";
+  var W=420,H=260,ml=44,mr=12,mt=12,mb=38, n=80, xs=[],pm=[],ep=[];
+  for(var i=0;i<=n;i++){ var x=xmax*i/n; var o=M({}); o[key]=x; var q=parts(o,o); xs.push(x); pm.push(q.PMC); ep.push(q.EP); }
+  var all=pm.concat(ep), lo=Math.min.apply(null,all), hi=Math.max.apply(null,all); var pad=(hi-lo)*0.08||1; lo-=pad; hi+=pad;
+  var X=function(x){return ml+(W-ml-mr)*x/xmax;}, Y=function(y){return mt+(H-mt-mb)*(1-(y-lo)/(hi-lo));};
+  // exit shading
+  for(var j=0;j<n;j++){ if(pm[j]<ep[j]||pm[j+1]<ep[j+1]){
+    var pts=[[X(xs[j]),Y(ep[j])],[X(xs[j+1]),Y(ep[j+1])],[X(xs[j+1]),Y(Math.min(pm[j+1],ep[j+1]))],[X(xs[j]),Y(Math.min(pm[j],ep[j]))]].map(function(p){return p[0].toFixed(1)+","+p[1].toFixed(1);}).join(" ");
+    svg.appendChild(svgEl("polygon",{points:pts,fill:css("--exit-soft")}));
+  }}
+  niceTicks(lo,hi,5).forEach(function(t){ svg.appendChild(svgEl("line",{x1:ml,x2:W-mr,y1:Y(t),y2:Y(t),stroke:css("--rule"),"stroke-width":1})); svg.appendChild(svgEl("text",{x:ml-6,y:Y(t)+4,"text-anchor":"end"},t)); });
+  niceTicks(0,xmax,5).forEach(function(t){ svg.appendChild(svgEl("text",{x:X(t),y:H-mb+16,"text-anchor":"middle"},t)); });
+  svg.appendChild(svgEl("text",{x:(ml+W-mr)/2,y:H-6,"text-anchor":"middle"},xlabel));
+  function path(ys,color){ var d=ys.map(function(y,i){return (i?"L":"M")+X(xs[i]).toFixed(1)+" "+Y(y).toFixed(1);}).join(""); svg.appendChild(svgEl("path",{d:d,fill:"none",stroke:color,"stroke-width":2.5})); }
+  path(ep,css("--thresh")); path(pm,css("--stay"));
+  var cx=X(S[key]); svg.appendChild(svgEl("line",{x1:cx,x2:cx,y1:mt,y2:H-mb,stroke:css("--ink"),"stroke-dasharray":"3 3","stroke-width":1}));
+  svg.appendChild(svgEl("text",{x:cx+4,y:mt+10,"text-anchor":"start",style:"fill:"+css("--ink")},"your firm"));
+}
+
+function waterfall(){
+  var svg=document.getElementById("waterfall"); svg.innerHTML="";
+  var q=parts(M(),M());
+  var steps=[["PM_A  best alternative market",q.PMA],["DV_A  alternative use of data",q.DVA],["DV_C  forward value of specific data",-q.DVC],["RC  redeployment cost",-q.RC]];
+  if(S.sigma>0) steps.push(["Value of waiting",-q.W]);
+  var run=0, pts=[0]; steps.forEach(function(s){run+=s[1]; pts.push(run);});
+  var lo=Math.min(0,Math.min.apply(null,pts),q.PMC), hi=Math.max(0,Math.max.apply(null,pts),q.PMC); var pad=(hi-lo)*0.05||1; lo-=pad; hi+=pad;
+  var W=720, lw=250, rm=60, X=function(v){return lw+(W-lw-rm)*(v-lo)/(hi-lo);};
+  var rowH=26, y=8;
+  svg.setAttribute("viewBox","0 0 720 "+(8+rowH*(steps.length+2)+24));
+  svg.appendChild(svgEl("line",{x1:X(0),x2:X(0),y1:4,y2:8+rowH*(steps.length+2),stroke:css("--rule")}));
+  run=0;
+  steps.forEach(function(s){
+    var a=run, b=run+s[1]; run=b;
+    svg.appendChild(svgEl("text",{x:lw-8,y:y+16,"text-anchor":"end"},s[0]));
+    svg.appendChild(svgEl("rect",{x:Math.min(X(a),X(b)),y:y+4,width:Math.max(1,Math.abs(X(b)-X(a))),height:rowH-10,fill:s[1]>=0?css("--thresh"):css("--muted"),opacity:s[1]>=0?0.85:0.55,rx:2}));
+    svg.appendChild(svgEl("text",{x:Math.max(X(a),X(b))+5,y:y+16},(s[1]>=0?"+":"−")+Math.abs(s[1]).toFixed(2)));
+    y+=rowH;
+  });
+  var lab=S.sigma>0?"Exit point":"Survival threshold T_C";
+  svg.appendChild(svgEl("text",{x:lw-8,y:y+16,"text-anchor":"end",style:"fill:"+css("--ink")+";font-weight:600"},lab));
+  svg.appendChild(svgEl("rect",{x:Math.min(X(0),X(run)),y:y+4,width:Math.max(2,Math.abs(X(run)-X(0))),height:rowH-10,fill:css("--thresh"),rx:2}));
+  svg.appendChild(svgEl("text",{x:Math.max(X(0),X(run))+5,y:y+16,style:"fill:"+css("--ink")},run.toFixed(2)));
+  y+=rowH;
+  var stay=q.gap>=0;
+  svg.appendChild(svgEl("text",{x:lw-8,y:y+16,"text-anchor":"end",style:"fill:"+css("--ink")+";font-weight:600"},"Focal-market value PM_C"));
+  svg.appendChild(svgEl("rect",{x:Math.min(X(0),X(q.PMC)),y:y+4,width:Math.max(2,Math.abs(X(q.PMC)-X(0))),height:rowH-10,fill:stay?css("--stay"):css("--exit"),rx:2}));
+  svg.appendChild(svgEl("text",{x:Math.max(X(0),X(q.PMC))+5,y:y+16,style:"fill:"+css("--ink")},q.PMC.toFixed(2)));
+  var v=document.getElementById("verdict"); v.textContent=stay?"Stays":"Exits"; v.className="big "+(stay?"stay":"exit");
+  document.getElementById("verdictTxt").textContent="Focal value "+q.PMC.toFixed(2)+(stay?" is at or above":" is below")+" the "+(S.sigma>0?"exit point ":"threshold ")+q.EP.toFixed(2)+".";
+}
+
+function checks(){
+  var o=M(), ul=document.getElementById("checks"); ul.innerHTML="";
+  var gen=o.x1*o.x3, spec=(1-o.x1)*o.x3;
+  function d(f,x){var h=1e-4; return (f(x+h)-f(Math.max(0,x-h)))/((x+h)-Math.max(0,x-h));}
+  var list=[
+    ["PM_A rises with generalizable data", d(function(g){return o.aA*pw(g,o.thA);},gen)>0||o.aA===0, o.aA===0?"(scale is zero)":""],
+    ["DV_A rises with generalizable data", d(function(g){return o.dA*pw(g,o.thD)*Math.exp(-o.kA*o.tau);},gen)>0||o.dA===0,""],
+    ["DV_C rises with specific data", d(function(x){return o.dC*pw(x,o.thE)*(1+o.kC*o.tau);},spec)>0||o.dC===0,""],
+    ["DV_A falls as the industry matures", o.kA>0, ""],
+    ["DV_C rises as the industry matures", o.kC>0 && (1+o.kC*o.tau)>0, ""],
+    ["Redeployment cost rises with frictions", o.r>0, ""],
+    ["Threshold rises with generalizable share", deriv(function(z){return parts(z,z).TC;},o,"x1")>0, ""],
+    ["Threshold falls with frictions", deriv(function(z){return parts(z,z).TC;},o,"x4")<0, ""]
+  ];
+  var allOk=true;
+  list.forEach(function(c){ if(!c[1]) allOk=false; var li=document.createElement("li"); li.innerHTML='<span class="'+(c[1]?"ok":"bad")+'">'+(c[1]?"✓":"✗")+'</span><span>'+c[0]+(c[1]?"":" — violated")+'</span>'; ul.appendChild(li); });
+  var li=document.createElement("li"); li.style.gridColumn="1/-1"; li.innerHTML=allOk?'<span class="ok">Admissible.</span><span>This specification is a valid version of the theory.</span>':'<span class="bad">Rejected.</span><span>This specification breaks the paper\'s assumptions, so its predictions say nothing about the theory.</span>';
+  ul.appendChild(li);
+  return allOk;
+}
+
+function robust(){
+  var pt=pointOf(S), p1=0,p2=0,mat=0,stay=0,p1b=0;
+  SPECS.forEach(function(sp){
+    var o=Object.assign({},sp,pt);
+    if(deriv(exitTend,o,"x1")>0) p1++;
+    var o0=Object.assign({},o,{sigma:0}); if(deriv(exitTend,o0,"x1")>0) p1b++;
+    if(deriv(exitTend,o,"x3")>0) p2++;
+    if(deriv(function(z){return parts(z,z).EP;},o,"tau")<0) mat++;
+    if(parts(o,o).gap>=0) stay++;
+  });
+  return {p1:p1/NSPEC,p1b:p1b/NSPEC,p2:p2/NSPEC,mat:mat/NSPEC,stay:stay/NSPEC};
+}
+function pct(x){ return Math.round(x*100)+"%"; }
+function bar(x){ return '<div class="bar"><i style="width:'+(x*100).toFixed(1)+'%"></i></div>'; }
+
+function props(admissible){
+  var o=M(), R=robust();
+  var d1=deriv(exitTend,o,"x1"), d3=deriv(exitTend,o,"x3"), dt=deriv(function(z){return parts(z,z).EP;},o,"tau");
+  var o0=Object.assign({},o,{sigma:0}), d10=deriv(exitTend,o0,"x1");
+  var tag=admissible?"":' <span class="bad">(rejected spec)</span>';
+  var rows=[
+    ["<b>Proposition 1.</b> A larger generalizable share makes exit more likely, holding size fixed.",
+     (d1>0?'<span class="ok">Holds</span>':'<span class="bad">Reverses</span>')+tag+'<br><span class="note">The threshold rises faster than focal value'+(d1>0?".":" does not hold here: focal value rises faster.")+'</span>',
+     '<span class="share">'+pct(R.p1)+'</span> of versions'+bar(R.p1)],
+    ["<b>Proposition 2.</b> A larger portfolio raises exit when the threshold effect of generalizable data dominates, and lowers it otherwise.",
+     (d3>0?'Threshold effect dominates: <b>more exit</b>':'Focal-value effect dominates: <b>less exit</b>')+tag,
+     '<span class="share">'+pct(R.p2)+'</span> of versions predict more exit here'+bar(R.p2)],
+    ["<b>Industry maturity.</b> Maturity lowers the exit point for any portfolio.",
+     (dt<0?'<span class="ok">Holds</span>':'<span class="bad">Fails</span>')+tag,
+     '<span class="share">'+pct(R.mat)+'</span> of versions'+bar(R.mat)],
+    ["<b>Footnote 3.</b> Proposition 1 survives uncertainty unless waiting value varies enough with composition.",
+     S.sigma===0?'<span class="note">Set uncertainty above zero to test.</span>':((d1>0)===(d10>0)?'<span class="ok">Survives</span>':'<span class="bad">Reversed by uncertainty</span>')+tag,
+     S.sigma===0?'<span class="note">Benchmark: '+pct(R.p1b)+' hold without uncertainty.</span>':'<span class="share">'+pct(R.p1)+'</span> with uncertainty vs. '+pct(R.p1b)+' without'],
+    ["<b>Your firm's outcome.</b>",
+     (parts(o,o).gap>=0?'<span class="ok">Stays</span>':'<span class="bad">Exits</span>')+tag,
+     '<span class="share">'+pct(R.stay)+'</span> of versions predict it stays'+bar(R.stay)]
+  ];
+  document.getElementById("propRows").innerHTML=rows.map(function(r){return "<tr><td>"+r[0]+"</td><td>"+r[1]+"</td><td>"+r[2]+"</td></tr>";}).join("");
+}
+
+var mapMode="one";
+function hex2rgb(h){ h=h.replace("#",""); if(h.length===3)h=h.split("").map(function(c){return c+c;}).join(""); return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]; }
+function mix(a,b,t){ return [0,1,2].map(function(i){return Math.round(a[i]+(b[i]-a[i])*t);}); }
+function heat(){
+  var cv=document.getElementById("heat"), ctx=cv.getContext("2d"), N=mapMode==="one"?80:32, W=cv.width, cell=W/N;
+  var stay=hex2rgb(css("--stay")), exit=hex2rgb(css("--exit")), paper=hex2rgb(css("--panel"));
+  var vals=[], maxAbs=0;
+  for(var i=0;i<N;i++){ vals.push([]); for(var j=0;j<N;j++){
+    var x1=(i+0.5)/N, x3=10*(j+0.5)/N, v;
+    if(mapMode==="one"){ var o=M({x1:x1,x3:x3}); v=parts(o,o).gap; maxAbs=Math.max(maxAbs,Math.abs(v)); }
+    else { var pt=pointOf(S); pt.x1=x1; pt.x3=x3; var c=0; MAPSPECS.forEach(function(sp){ var o=Object.assign({},sp,pt); if(parts(o,o).gap>=0)c++; }); v=c/MAPSPECS.length; }
+    vals[i].push(v);
+  }}
+  for(i=0;i<N;i++) for(j=0;j<N;j++){
+    var v=vals[i][j], col;
+    if(mapMode==="one"){ var t=Math.min(1,Math.abs(v)/(maxAbs||1)); t=0.25+0.75*Math.sqrt(t); col=mix(paper,v>=0?stay:exit,t); }
+    else { col= v>=0.5? mix(paper,stay,(v-0.5)*2*0.85+0.1) : mix(paper,exit,(0.5-v)*2*0.85+0.1); }
+    ctx.fillStyle="rgb("+col.join(",")+")"; ctx.fillRect(i*cell, W-(j+1)*cell, cell+1, cell+1);
+  }
+  // boundary
+  ctx.fillStyle=css("--ink");
+  var thr=mapMode==="one"?0:0.5;
+  for(i=0;i<N-1;i++) for(j=0;j<N-1;j++){
+    var s=vals[i][j]>=thr; if(s!==(vals[i+1][j]>=thr)||s!==(vals[i][j+1]>=thr)) ctx.fillRect((i+1)*cell-1, W-(j+1)*cell-1, 2, 2);
+  }
+  // marker
+  var mx=S.x1*W, my=W-S.x3/10*W;
+  ctx.beginPath(); ctx.arc(mx,my,7,0,Math.PI*2); ctx.lineWidth=3; ctx.strokeStyle=css("--panel"); ctx.stroke();
+  ctx.beginPath(); ctx.arc(mx,my,7,0,Math.PI*2); ctx.lineWidth=1.5; ctx.strokeStyle=css("--ink"); ctx.stroke();
+  document.getElementById("heatLegend").textContent= mapMode==="one" ? "Green: stays. Red: exits. Darker means further from the boundary." : "Green: most versions say stay. Red: most say exit. Pale areas are where the theory is indeterminate.";
+}
+document.getElementById("mapOne").addEventListener("click",function(){mapMode="one";this.setAttribute("aria-pressed","true");document.getElementById("mapAll").setAttribute("aria-pressed","false");heat();});
+document.getElementById("mapAll").addEventListener("click",function(){mapMode="all";this.setAttribute("aria-pressed","true");document.getElementById("mapOne").setAttribute("aria-pressed","false");heat();});
+
+function specJson(){
+  var spec={
+    theory:"Survival of the Most Specific? (Bradley, under review)",
+    variables:{x1:"generalizable share [0,1]",x3:"portfolio size [0,10]",x2:"identity: (1-x1)*x3",x4:"redeployment frictions [0,10]",tau:"industry maturity [0,4]"},
+    sign_restrictions:["dPM_A/d(x1x3) > 0","dDV_A/d(x1x3) > 0","dDV_C/dx2 > 0","dDV_A/dtau < 0","dDV_C/dtau > 0","dRC/dx4 > 0"],
+    propositions:["P1: d(T_C - PM_C)/dx1 > 0 holding x3","P2: sign of d(T_C - PM_C)/dx3 depends on which effect dominates","Maturity: dT_C/dtau < 0","Footnote 3: P1 robust to waiting value unless it varies enough with x1"],
+    functional_forms:{
+      PM_C:"b + aC * x3^thC * (1 - x1 + g*x1)",
+      PM_A:"aA * (x1 x3)^thA",
+      DV_A:"dA * (x1 x3)^thD * exp(-kA tau)",
+      DV_C:"dC * x2^thE * (1 + kC tau)",
+      RC:"r * x4",
+      waiting:"sigma^2 * max(0, w0 + m x1)"
+    },
+    current_point:{x1:S.x1,x3:S.x3,x4:S.x4,tau:S.tau,b:S.b,sigma:S.sigma},
+    current_parameters:{aC:S.aC,thC:S.thC,g:S.g,aA:S.aA,thA:S.thA,dA:S.dA,thD:S.thD,kA:S.kA,dC:S.dC,thE:S.thE,kC:S.kC,r:S.r,w0:S.w0,m:S.m},
+    robustness_sampling:{seed:SEED,n:NSPEC,distribution:"uniform",ranges:RANGES}
+  };
+  document.getElementById("specJson").textContent=JSON.stringify(spec,null,2);
+}
+
+// ---------- manager view ----------
+var MQ=[
+  ["x1","How much of your data would be valuable in other markets?",[["Little",0.15],["Some",0.5],["Most",0.85]]],
+  ["x3","How much data do you hold compared with rivals?",[["Less",2],["About the same",5],["Much more",9]]],
+  ["x4","How hard would it be to move that data into new uses (technical, legal, consent, contracts)?",[["Easy",1],["Moderate",4],["Hard",8]]],
+  ["tau","How settled is your market?",[["Emerging",0.2],["Growing",1.5],["Mature",3.5]]],
+  ["b","How is the business doing, setting data aside?",[["Struggling",-1],["Steady",0],["Strong",1.5]]],
+  ["sigma","How uncertain is the outlook?",[["Low",0],["Medium",0.8],["High",1.5]]]
+];
+function buildMgr(){
+  var host=document.getElementById("mgrQs");
+  MQ.forEach(function(q){
+    var p=document.createElement("p"); p.className="q"; p.textContent=q[1]; host.appendChild(p);
+    var g=document.createElement("div"); g.className="seg"; g.setAttribute("role","group"); g.setAttribute("aria-label",q[1]);
+    q[2].forEach(function(opt){ var b=document.createElement("button"); b.textContent=opt[0]; b.dataset.k=q[0]; b.dataset.v=opt[1];
+      b.addEventListener("click",function(){ S[q[0]]=opt[1]; syncCtls(); schedule(); }); g.appendChild(b); });
+    host.appendChild(g);
+  });
+}
+buildMgr();
+function stayShare(pt){ var c=0; SPECS.forEach(function(sp){ var o=Object.assign({},sp,pt); if(parts(o,o).gap>=0)c++; }); return c/NSPEC; }
+function mgr(){
+  document.querySelectorAll("#mgrQs button").forEach(function(b){ b.setAttribute("aria-pressed", Math.abs(S[b.dataset.k]-parseFloat(b.dataset.v))<1e-9?"true":"false"); });
+  var pt=pointOf(S), sh=stayShare(pt), stay=sh>=0.5;
+  var v=document.getElementById("mVerdict");
+  var strength = sh>=0.8||sh<=0.2 ? "clearly favors" : (sh>=0.65||sh<=0.35 ? "leans toward" : "is close to a toss-up, slightly favoring");
+  v.textContent = stay ? "The theory says: stay" : "The theory says: consider leaving";
+  v.className="big "+(stay?"stay":"exit");
+  document.getElementById("mText").textContent = stay
+    ? "For a business like yours, the value of staying in this market is likely to exceed what your data could earn elsewhere, after the cost of moving it."
+    : "For a business like yours, your data may be worth more in another market than in this one, even after the cost of moving it.";
+  document.getElementById("mRobust").innerHTML = "The prediction "+strength+" "+(stay?"staying":"leaving")+": <b>"+pct(stay?sh:1-sh)+"</b> of "+NSPEC.toLocaleString()+" plausible versions of the theory agree.";
+  document.getElementById("mBar").style.width=(sh*100).toFixed(1)+"%";
+  document.getElementById("mBar").style.background=stay?css("--stay"):css("--exit");
+  var ul=document.getElementById("mFlips"); ul.innerHTML=""; var any=false;
+  MQ.forEach(function(q){ q[2].forEach(function(opt){
+    if(Math.abs(S[q[0]]-opt[1])<1e-9) return;
+    var p2=Object.assign({},pt); p2[q[0]]=opt[1]; var s2=stayShare(p2);
+    if((s2>=0.5)!==stay){ any=true; var li=document.createElement("li"); li.innerHTML="If the answer to “"+q[1].replace(/\?$/,"")+"” were <b>"+opt[0].toLowerCase()+"</b>, the prediction would switch to "+(s2>=0.5?"staying":"leaving")+" ("+pct(s2>=0.5?s2:1-s2)+" agree)."; ul.appendChild(li); }
+  });});
+  if(!any){ var li=document.createElement("li"); li.textContent="No single change flips the prediction. It is robust to each of these answers on its own."; ul.appendChild(li); }
+}
+
+// ---------- tabs ----------
+function show(which){
+  var r=which==="r";
+  document.getElementById("view-r").hidden=!r; document.getElementById("view-m").hidden=r;
+  document.getElementById("tab-r").setAttribute("aria-selected",r?"true":"false");
+  document.getElementById("tab-m").setAttribute("aria-selected",r?"false":"true");
+  try{ localStorage.setItem("tm-tab",which); }catch(e){}
+  render();
+}
+document.getElementById("tab-r").addEventListener("click",function(){show("r");});
+document.getElementById("tab-m").addEventListener("click",function(){show("m");});
+
+// ---------- render loop ----------
+var pending=false;
+function schedule(){ if(pending) return; pending=true; requestAnimationFrame(function(){ pending=false; render(); }); }
+function render(){
+  ALLCTL.forEach(function(c){ var e=document.getElementById("v-"+c[0]); if(e) e.textContent=fmt(S[c[0]],c[4]); });
+  if(!document.getElementById("view-r").hidden){
+    waterfall(); var ok=checks(); props(ok);
+    lineChart("chartX1","x1",1,"Generalizable share x₁");
+    lineChart("chartX3","x3",10,"Portfolio size x₃");
+    heat(); specJson();
+  } else { mgr(); }
+}
+syncCtls();
+var startTab="r"; try{ startTab=localStorage.getItem("tm-tab")||"r"; }catch(e){}
+show(startTab==="m"?"m":"r");
+if(window.matchMedia){ var mq=window.matchMedia("(prefers-color-scheme: dark)"); var h=function(){render();}; if(mq.addEventListener) mq.addEventListener("change",h); else if(mq.addListener) mq.addListener(h); }
+})();
+</script>
+</body>
+</html>
