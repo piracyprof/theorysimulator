@@ -1,0 +1,55 @@
+{
+  "theory": "Threshold model of firms' data portfolios (working paper under review; author and title withheld for blind review)",
+  "adapted_from": "Gimeno, Folta, Cooper, and Woo (1997), Administrative Science Quarterly 42(4)",
+  "variables": {
+    "x1": "generalizable share of the data portfolio, range [0, 1]",
+    "x3": "total size of the data portfolio, range [0, 10]",
+    "x2": "identity: (1 - x1) * x3, stock of product-market-specific data",
+    "x4": "redeployment frictions, range [0, 10]",
+    "tau": "industry maturity, range [0, 4]"
+  },
+  "threshold": "T_C = PM_A(x1 x3) + DV_A(x1 x3, tau) - DV_C(x2, tau) - RC(x4)",
+  "exit_rule": "exit if PM_C < T_C - W, where W is the value of waiting (W = 0 without uncertainty)",
+  "sign_restrictions": [
+    "dPM_A / d(x1 x3) > 0",
+    "dDV_A / d(x1 x3) > 0",
+    "dDV_C / dx2 > 0",
+    "dDV_A / dtau < 0",
+    "dDV_C / dtau > 0",
+    "dRC / dx4 > 0"
+  ],
+  "propositions": {
+    "P1": "d(T_C - PM_C) / dx1 > 0, holding x3 fixed",
+    "P2": "sign of d(T_C - PM_C) / dx3 depends on whether the threshold effect of generalizable data exceeds the gain in focal-market value",
+    "maturity": "dT_C / dtau < 0",
+    "footnote_3": "P1 is robust to the value of waiting unless W varies enough with x1 to reverse it"
+  },
+  "functional_forms": {
+    "PM_C": "b + aC * x3^thC * (1 - x1 + g * x1)",
+    "PM_A": "aA * (x1 x3)^thA",
+    "DV_A": "dA * (x1 x3)^thD * exp(-kA * tau)",
+    "DV_C": "dC * x2^thE * (1 + kC * tau)",
+    "RC": "r * x4",
+    "W": "sigma^2 * max(0, w0 + m * x1)"
+  },
+  "default_point": { "x1": 0.5, "x3": 5, "x4": 4, "tau": 1.5, "b": 0, "sigma": 0 },
+  "default_parameters": {
+    "aC": 0.6, "thC": 0.8, "g": 0.6,
+    "aA": 1.5, "thA": 0.8,
+    "dA": 1.0, "thD": 0.8, "kA": 0.3,
+    "dC": 0.8, "thE": 0.8, "kC": 0.3,
+    "r": 0.3, "w0": 0.2, "m": 0
+  },
+  "robustness_sampling": {
+    "seed": 2026,
+    "n": 1500,
+    "distribution": "uniform, each parameter drawn independently",
+    "ranges": {
+      "aC": [0.3, 1.5], "thC": [0.4, 1.6], "g": [0, 1.5],
+      "aA": [0.3, 2.5], "thA": [0.4, 1.6],
+      "dA": [0.3, 2.5], "thD": [0.4, 1.6], "kA": [0, 0.8],
+      "dC": [0.3, 2.5], "thE": [0.4, 1.6], "kC": [0, 0.8],
+      "r": [0.05, 0.6], "w0": [0, 0.5], "m": [-1, 1]
+    }
+  }
+}
