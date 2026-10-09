@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Model lineage: what each threshold model inherited and changed</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#f5f7fa; --panel:#ffffff; --ink:#1c2333; --muted:#5f6878; --rule:#d9dee7;
+  --focal:#5b3fa8; --focal-soft:#ece7f8; --sib:#1f7a74; --sib-soft:#dcf0ee;
+  --anc:#6b7385; --edge:#5b3fa8; --edge-anc:#9aa2b2;
+  --keep:#2f6f9e; --keep-soft:#e1edf7; --chg:#a3591c; --chg-soft:#f8e9dc; --add:#2c7a4b; --add-soft:#e0f2e7;
+  --serif:"Source Serif 4", Georgia, "Times New Roman", serif;
+  --sans:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#141922; --panel:#1b2230; --ink:#e7ebf2; --muted:#9aa4b5; --rule:#2e3748;
+    --focal:#b7a3f0; --focal-soft:#2f2850; --sib:#6fd0c6; --sib-soft:#18393a;
+    --anc:#9aa4b5; --edge:#b7a3f0; --edge-anc:#5d677a;
+    --keep:#8cbfe6; --keep-soft:#1c3142; --chg:#e8a76d; --chg-soft:#3d2a1a; --add:#7fd1a0; --add-soft:#1b3626;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#141922; --panel:#1b2230; --ink:#e7ebf2; --muted:#9aa4b5; --rule:#2e3748;
+  --focal:#b7a3f0; --focal-soft:#2f2850; --sib:#6fd0c6; --sib-soft:#18393a;
+  --anc:#9aa4b5; --edge:#b7a3f0; --edge-anc:#5d677a;
+  --keep:#8cbfe6; --keep-soft:#1c3142; --chg:#e8a76d; --chg-soft:#3d2a1a; --add:#7fd1a0; --add-soft:#1b3626;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5}
+h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.2;margin:0}
+h1{font-size:clamp(1.6rem,3.4vw,2.3rem);max-width:30ch}
+h2{font-size:1.25rem;margin-bottom:.4rem}
+h3{font-size:1rem;margin:.9rem 0 .3rem}
+p{margin:.4rem 0;max-width:72ch}
+a{color:var(--focal)}
+.wrap{max-width:1240px;margin:0 auto;padding:1.5rem 1.25rem 3rem}
+header{padding:1rem 0;border-bottom:1px solid var(--rule);margin-bottom:1.25rem}
+.sub{color:var(--muted);margin-top:.5rem}
+.nav{font-size:.9rem;margin-bottom:.6rem}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:1.5rem;align-items:start}
+@media (max-width:980px){.layout{grid-template-columns:1fr}}
+.treebox{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:1rem;overflow-x:auto}
+.tree{position:relative;min-width:720px}
+.gen{display:grid;grid-template-columns:repeat(4,1fr);gap:1.2rem;align-items:start;margin-bottom:3.2rem;position:relative;z-index:1}
+.gen:last-of-type{margin-bottom:.5rem}
+.genlabel{grid-column:1/-1;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:-.6rem}
+.card{font:inherit;text-align:left;background:var(--panel);color:var(--ink);border:1px solid var(--rule);border-radius:8px;padding:.6rem .7rem;cursor:pointer;width:100%}
+.card:hover{border-color:var(--anc)}
+.card[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:1px}
+.card .t{font-weight:600;font-size:.92rem;display:block}
+.card .d{font-size:.8rem;color:var(--muted);display:block;margin-top:.15rem}
+.card .tag{display:inline-block;font-size:.7rem;font-weight:600;padding:.05rem .45rem;border-radius:999px;margin-top:.4rem}
+.card.focal{background:var(--focal-soft);border-color:var(--focal)}
+.card.focal .tag{background:var(--focal);color:var(--panel)}
+.card.sib{background:var(--sib-soft);border-color:var(--sib);border-style:dashed}
+.card.sib .tag{background:var(--sib);color:var(--panel)}
+.card.anc .tag{background:var(--rule);color:var(--ink)}
+svg.edges{position:absolute;inset:0;width:100%;height:100%;z-index:0;overflow:visible}
+svg.edges path.vis{fill:none}
+svg.edges path.hit{fill:none;stroke:transparent;stroke-width:14;cursor:pointer;pointer-events:stroke}
+svg.edges g.on path.vis{stroke-width:4!important}
+.legend{display:flex;flex-wrap:wrap;gap:1rem;font-size:.82rem;color:var(--muted);margin-top:.8rem}
+.ln{display:inline-block;width:26px;height:0;border-top:2.5px solid var(--edge);vertical-align:middle;margin-right:.35rem}
+.ln.d{border-top:2px dashed var(--edge-anc)}
+aside.panel{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:1.1rem 1.2rem;position:sticky;top:calc(env(safe-area-inset-top,0px) + 1rem)}
+@media (max-width:980px){aside.panel{position:static}}
+.kv{font-size:.88rem;color:var(--muted);margin:.2rem 0 .6rem}
+.diff{list-style:none;padding:0;margin:.3rem 0 .6rem}
+.diff li{display:grid;grid-template-columns:72px 1fr;gap:.5rem;align-items:baseline;font-size:.9rem;padding:.35rem 0;border-bottom:1px solid var(--rule)}
+.chip{font-size:.7rem;font-weight:600;text-align:center;padding:.1rem .3rem;border-radius:4px}
+.chip.keep{background:var(--keep-soft);color:var(--keep)}
+.chip.chg{background:var(--chg-soft);color:var(--chg)}
+.chip.add{background:var(--add-soft);color:var(--add)}
+.note{font-size:.84rem;color:var(--muted)}
+.edgebtn{font:inherit;font-size:.85rem;border:1px solid var(--rule);background:transparent;color:var(--ink);border-radius:6px;padding:.3rem .6rem;margin:.2rem .3rem .2rem 0;cursor:pointer}
+.edgebtn:hover{border-color:var(--focal)}
+table.pred{width:100%;border-collapse:collapse;font-size:.86rem;margin-top:.3rem}
+table.pred td{padding:.35rem .2rem;border-bottom:1px solid var(--rule);vertical-align:top}
+.section{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:1.1rem 1.2rem;margin-top:1.25rem}
+button:focus-visible{outline:2px solid var(--focal);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <p class="nav"><a href="index.html">← Back to the interactive model</a></p>
+  <h1>Model lineage: what each threshold model kept, changed, and added</h1>
+  <p class="sub">A citation map shows who cited whom. This map shows how models descend from one another. Each line is a recorded difference between two specification files. Click any model or line to see what passed down it.</p>
+</header>
+
+<div class="layout">
+  <div>
+    <div class="treebox">
+      <div class="tree" id="tree">
+        <svg class="edges" id="edges" aria-hidden="true"></svg>
+        <div class="gen" id="g1"><div class="genlabel">Foundations</div></div>
+        <div class="gen" id="g2"><div class="genlabel">Extensions</div></div>
+        <div class="gen" id="g3"><div class="genlabel">Descendants</div></div>
+      </div>
+      <div class="legend">
+        <span><i class="ln"></i>Inheritance stated in the focal model</span>
+        <span><i class="ln d"></i>Earlier lineage, to be verified</span>
+        <span><span class="chip keep">Kept</span> <span class="chip chg">Changed</span> <span class="chip add">Added</span> what moved along a line</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Inherited or new? The test this lineage makes possible</h2>
+      <p>Because every model is stored as a specification file that names its parent, the tool can switch off whatever a child added and rerun its propositions. Predictions that survive are inherited; predictions that disappear are the child's own contribution.</p>
+      <table class="pred" id="predTable"></table>
+      <p class="note">Status: the focal model's specification is complete. Specifications for its ancestors, and the switch-off test, are planned for Stage 2.</p>
+    </div>
+  </div>
+
+  <aside class="panel" id="panel" aria-live="polite"></aside>
+</div>
+</div>
+
+<script>
+(function(){
+"use strict";
+var NODES = [
+  {id:"dixit89", gen:1, col:1, kind:"anc", title:"Dixit 1989", desc:"Entry and exit under uncertainty",
+   cite:"Dixit, A. (1989). Entry and exit decisions under uncertainty. Journal of Political Economy, 97(3), 620–638.",
+   role:"Shows that sunk costs and uncertainty make firms delay exit: they wait rather than leave on a bad signal.", spec:false},
+  {id:"gimeno97", gen:1, col:2, kind:"anc", title:"Gimeno et al. 1997", desc:"Performance thresholds, human capital",
+   cite:"Gimeno, J., Folta, T. B., Cooper, A. C., & Woo, C. Y. (1997). Survival of the fittest? Administrative Science Quarterly, 42(4), 750–783.",
+   role:"A venture persists while performance exceeds a threshold set by the owner's alternatives. General human capital raises the threshold; venture-specific human capital lowers it.", spec:false},
+  {id:"lw10", gen:1, col:4, kind:"anc", title:"Levinthal & Wu 2010", desc:"Non-scale-free capabilities",
+   cite:"Levinthal, D. A., & Wu, B. (2010). Opportunity costs and non-scale free capabilities. Strategic Management Journal, 31(7), 780–801.",
+   role:"Distinguishes resources that carry an opportunity cost across uses from those that can be shared at no cost.", spec:false},
+  {id:"dp94", gen:2, col:1, kind:"anc", title:"Dixit & Pindyck 1994", desc:"The value of waiting",
+   cite:"Dixit, A. K., & Pindyck, R. S. (1994). Investment under uncertainty. Princeton University Press.",
+   role:"Formalizes the option value of waiting, which pushes the exit point below the break-even threshold.", spec:false},
+  {id:"lieb17", gen:2, col:3, kind:"anc", title:"Lieberman et al. 2017", desc:"Exit through redeployment",
+   cite:"Lieberman, M. B., Lee, G. K., & Folta, T. B. (2017). Entry, exit, and the potential for resource redeployment. Strategic Management Journal, 38(3), 526–544.",
+   role:"A firm exits a business when its cash flow falls below the value it could recover by redeploying the business's resources.", spec:false},
+  {id:"gius23", gen:2, col:4, kind:"anc", title:"Giustiziero et al. 2023", desc:"Scalable resource bundles",
+   cite:"Giustiziero, G., Kretschmer, T., Somaya, D., & Wu, B. (2023). Hyperspecialization and hyperscaling. Strategic Management Journal, 44(6), 1391–1424.",
+   role:"Data and software scale at little cost, but the engineers, managers, and servers they need cannot serve two uses at once.", spec:false},
+  {id:"focal", gen:3, col:2, kind:"focal", title:"Data threshold model", desc:"Firms' data portfolios",
+   cite:"Working paper under review (author and title withheld for blind review).",
+   role:"A firm's survival threshold depends on how generalizable its data is. Generalizable data raises the threshold; market-specific data lowers it.", spec:true},
+  {id:"feld22", gen:3, col:3, kind:"sib", title:"Feldman & Sakhartov 2022", desc:"Redeployment vs. divestiture",
+   cite:"Feldman, E. R., & Sakhartov, A. V. (2022). Resource redeployment and divestiture as strategic alternatives. Organization Science, 33(3), 926–945.",
+   role:"Models how a firm exits as well as whether: redeployment dominates earlier exits and divestiture later ones. A sibling branch to be added in Stage 2.", spec:false}
+];
+var EDGES = [
+  {from:"gimeno97", to:"focal", stated:true, w:3.5, diff:[
+    ["keep","The threshold structure: exit when current value falls below the value of the best alternative minus switching costs"],
+    ["chg","Human capital becomes a data portfolio: general vs. venture-specific human capital becomes generalizable vs. market-specific data"],
+    ["add","Portfolio size, with market-specific data defined as (1 − generalizable share) × size"],
+    ["add","Industry maturity, which lowers the alternative value of generalizable data and raises the value of specific data"]]},
+  {from:"lieb17", to:"focal", stated:true, w:2.2, diff:[
+    ["keep","The exit rule: leave when focal value falls below the value recoverable by redeploying"],
+    ["chg","The alternative use need not be one of the firm's existing businesses"]]},
+  {from:"dp94", to:"focal", stated:true, w:2.2, diff:[
+    ["keep","The value of waiting, which lets a firm stay somewhat below its threshold under uncertainty"],
+    ["add","The claim that the propositions survive unless waiting value varies enough with portfolio composition"]]},
+  {from:"gius23", to:"focal", stated:true, w:2.2, diff:[
+    ["keep","Opportunity cost falls on the complements data needs, not on the data itself"],
+    ["chg","Data is therefore treated as a non-scale-free resource in the threshold model"]]},
+  {from:"dixit89", to:"dp94", stated:false, w:1.5, diff:[["keep","Exit under uncertainty and sunk costs (lineage to verify)"]]},
+  {from:"dixit89", to:"lieb17", stated:false, w:1.5, diff:[["keep","Economic theory of exit with sunk costs (lineage to verify)"]]},
+  {from:"lw10", to:"gius23", stated:false, w:1.5, diff:[["keep","Opportunity costs of resources across uses (lineage to verify)"]]},
+  {from:"lieb17", to:"feld22", stated:false, w:1.5, diff:[["keep","Redeployment as a mode of exit (lineage to verify)"]]}
+];
+var PRED = [
+  ["Proposition 1: a larger generalizable share raises the threshold","Inherited in form","Parallels Gimeno's general vs. specific human capital"],
+  ["Proposition 2: size raises or lowers exit depending on composition","New","Requires portfolio size, which Gimeno's model lacks"],
+  ["Industry maturity lowers the threshold for any portfolio","New","Requires the added maturity moderator"],
+  ["Uncertainty lets firms wait below the threshold","Inherited","From Dixit and Pindyck"]
+];
+
+var byId={}; NODES.forEach(function(n){byId[n.id]=n;});
+var sel={type:"node",id:"focal"};
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+
+function buildCards(){
+  NODES.forEach(function(n){
+    var g=document.getElementById("g"+n.gen);
+    var b=document.createElement("button");
+    b.className="card "+n.kind; b.id="n-"+n.id; b.style.gridColumn=n.col; b.style.gridRow=2;
+    var tag=n.kind==="focal"?"Focal model":(n.kind==="sib"?"Stage 2 branch":(n.spec?"Spec file":"Ancestor"));
+    b.innerHTML='<span class="t">'+n.title+'</span><span class="d">'+n.desc+'</span><span class="tag">'+tag+'</span>';
+    b.addEventListener("click",function(){sel={type:"node",id:n.id};render();});
+    g.appendChild(b);
+  });
+}
+function drawEdges(){
+  var svg=document.getElementById("edges"), tree=document.getElementById("tree"), tb=tree.getBoundingClientRect();
+  svg.setAttribute("viewBox","0 0 "+tb.width+" "+tb.height);
+  svg.innerHTML="";
+  var ns="http://www.w3.org/2000/svg";
+  EDGES.forEach(function(e,i){
+    var a=document.getElementById("n-"+e.from).getBoundingClientRect(), b=document.getElementById("n-"+e.to).getBoundingClientRect();
+    var x1=a.left+a.width/2-tb.left, y1=a.bottom-tb.top, x2=b.left+b.width/2-tb.left, y2=b.top-tb.top;
+    var my=(y1+y2)/2, d="M"+x1+" "+y1+" C"+x1+" "+my+" "+x2+" "+my+" "+x2+" "+(y2-2);
+    var g=document.createElementNS(ns,"g");
+    var on = (sel.type==="edge" && sel.i===i) || (sel.type==="node" && (sel.id===e.from || sel.id===e.to));
+    if(on) g.setAttribute("class","on");
+    var p=document.createElementNS(ns,"path"); p.setAttribute("d",d); p.setAttribute("class","vis");
+    p.setAttribute("stroke", e.stated?css("--edge"):css("--edge-anc")); p.setAttribute("stroke-width", e.w);
+    if(!e.stated) p.setAttribute("stroke-dasharray","6 5");
+    p.setAttribute("opacity", sel.type==="node" && !on ? 0.35 : 1);
+    var h=document.createElementNS(ns,"path"); h.setAttribute("d",d); h.setAttribute("class","hit");
+    h.addEventListener("click",function(){sel={type:"edge",i:i};render();});
+    var t=document.createElementNS(ns,"title"); t.textContent=byId[e.from].title+" → "+byId[e.to].title; h.appendChild(t);
+    g.appendChild(p); g.appendChild(h); svg.appendChild(g);
+  });
+}
+var LBL={keep:"Kept",chg:"Changed",add:"Added"};
+function diffList(diff){ return '<ul class="diff">'+diff.map(function(d){return '<li><span class="chip '+d[0]+'">'+LBL[d[0]]+'</span><span>'+d[1]+'</span></li>';}).join("")+'</ul>'; }
+function panel(){
+  var el=document.getElementById("panel"), h="";
+  if(sel.type==="edge"){
+    var e=EDGES[sel.i];
+    h='<p class="note">'+(e.stated?"Inheritance stated in the focal model":"Earlier lineage, to be verified")+'</p><h2>'+byId[e.from].title+' → '+byId[e.to].title+'</h2>'+diffList(e.diff);
+  } else {
+    var n=byId[sel.id];
+    h='<p class="note">'+(n.kind==="focal"?"Focal model":(n.kind==="sib"?"Stage 2 sibling branch":"Ancestor model"))+'</p><h2>'+n.title+'</h2><p>'+n.role+'</p><p class="kv">'+n.cite+'</p>';
+    h+='<p class="kv">Specification file: '+(n.spec?'<a href="spec/data-threshold-model.json">available</a>':'planned for Stage 2')+'</p>';
+    var parents=EDGES.map(function(e,i){return {e:e,i:i};}).filter(function(o){return o.e.to===n.id;});
+    var kids=EDGES.map(function(e,i){return {e:e,i:i};}).filter(function(o){return o.e.from===n.id;});
+    if(n.kind==="focal"){
+      h+='<h3>What it inherited</h3>';
+      parents.forEach(function(o){ h+='<p style="margin:.6rem 0 0"><b>From '+byId[o.e.from].title+'</b></p>'+diffList(o.e.diff); });
+    } else {
+      if(parents.length){ h+='<h3>Descends from</h3>'; parents.forEach(function(o){h+='<button class="edgebtn" data-i="'+o.i+'">'+byId[o.e.from].title+'</button>';}); }
+      if(kids.length){ h+='<h3>Passes down to</h3>'; kids.forEach(function(o){h+='<button class="edgebtn" data-i="'+o.i+'">'+byId[o.e.to].title+'</button>';}); }
+    }
+  }
+  el.innerHTML=h;
+  el.querySelectorAll(".edgebtn").forEach(function(b){ b.addEventListener("click",function(){sel={type:"edge",i:+b.dataset.i};render();}); });
+}
+function preds(){
+  document.getElementById("predTable").innerHTML='<tr><td><b>Prediction</b></td><td><b>Status</b></td><td><b>Why</b></td></tr>'+PRED.map(function(r){return '<tr><td>'+r[0]+'</td><td>'+r[1]+'</td><td class="note">'+r[2]+'</td></tr>';}).join("");
+}
+function render(){
+  NODES.forEach(function(n){ document.getElementById("n-"+n.id).setAttribute("aria-pressed", sel.type==="node"&&sel.id===n.id?"true":"false"); });
+  drawEdges(); panel();
+}
+buildCards(); preds(); render();
+window.addEventListener("resize",function(){drawEdges();});
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(drawEdges);
+if(window.matchMedia){var mq=window.matchMedia("(prefers-color-scheme: dark)"); var f=function(){drawEdges();}; if(mq.addEventListener)mq.addEventListener("change",f); else if(mq.addListener) mq.addListener(f);}
+})();
+</script>
+</body>
+</html>
