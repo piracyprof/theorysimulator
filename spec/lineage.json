@@ -1,0 +1,188 @@
+{
+  "description": "Model lineage: each edge records what a child model kept, changed, or added from its parent.",
+  "legend": {
+    "keep": "kept",
+    "chg": "changed",
+    "add": "added"
+  },
+  "nodes": [
+    {
+      "id": "dixit89",
+      "title": "Dixit 1989",
+      "citation": "Dixit, A. (1989). Entry and exit decisions under uncertainty. Journal of Political Economy, 97(3), 620–638.",
+      "role": "Shows that sunk costs and uncertainty make firms delay exit: they wait rather than leave on a bad signal.",
+      "kind": "anc",
+      "spec_file": null
+    },
+    {
+      "id": "gimeno97",
+      "title": "Gimeno et al. 1997",
+      "citation": "Gimeno, J., Folta, T. B., Cooper, A. C., & Woo, C. Y. (1997). Survival of the fittest? Administrative Science Quarterly, 42(4), 750–783.",
+      "role": "A venture persists while performance exceeds a threshold set by the owner's alternatives. General human capital raises the threshold; venture-specific human capital lowers it.",
+      "kind": "anc",
+      "spec_file": null
+    },
+    {
+      "id": "lw10",
+      "title": "Levinthal & Wu 2010",
+      "citation": "Levinthal, D. A., & Wu, B. (2010). Opportunity costs and non-scale free capabilities. Strategic Management Journal, 31(7), 780–801.",
+      "role": "Distinguishes resources that carry an opportunity cost across uses from those that can be shared at no cost.",
+      "kind": "anc",
+      "spec_file": null
+    },
+    {
+      "id": "dp94",
+      "title": "Dixit & Pindyck 1994",
+      "citation": "Dixit, A. K., & Pindyck, R. S. (1994). Investment under uncertainty. Princeton University Press.",
+      "role": "Formalizes the option value of waiting, which pushes the exit point below the break-even threshold.",
+      "kind": "anc",
+      "spec_file": null
+    },
+    {
+      "id": "lieb17",
+      "title": "Lieberman et al. 2017",
+      "citation": "Lieberman, M. B., Lee, G. K., & Folta, T. B. (2017). Entry, exit, and the potential for resource redeployment. Strategic Management Journal, 38(3), 526–544.",
+      "role": "A firm exits a business when its cash flow falls below the value it could recover by redeploying the business's resources.",
+      "kind": "anc",
+      "spec_file": null
+    },
+    {
+      "id": "gius23",
+      "title": "Giustiziero et al. 2023",
+      "citation": "Giustiziero, G., Kretschmer, T., Somaya, D., & Wu, B. (2023). Hyperspecialization and hyperscaling. Strategic Management Journal, 44(6), 1391–1424.",
+      "role": "Data and software scale at little cost, but the engineers, managers, and servers they need cannot serve two uses at once.",
+      "kind": "anc",
+      "spec_file": null
+    },
+    {
+      "id": "focal",
+      "title": "Data threshold model",
+      "citation": "Working paper under review (author and title withheld for blind review).",
+      "role": "A firm's survival threshold depends on how generalizable its data is. Generalizable data raises the threshold; market-specific data lowers it.",
+      "kind": "focal",
+      "spec_file": "spec/data-threshold-model.json"
+    },
+    {
+      "id": "feld22",
+      "title": "Feldman & Sakhartov 2022",
+      "citation": "Feldman, E. R., & Sakhartov, A. V. (2022). Resource redeployment and divestiture as strategic alternatives. Organization Science, 33(3), 926–945.",
+      "role": "Models how a firm exits as well as whether: redeployment dominates earlier exits and divestiture later ones. A sibling branch to be added in Stage 2.",
+      "kind": "sib",
+      "spec_file": null
+    }
+  ],
+  "edges": [
+    {
+      "parent": "gimeno97",
+      "child": "focal",
+      "stated_in_focal_model": true,
+      "diff": [
+        {
+          "type": "kept",
+          "text": "The threshold structure: exit when current value falls below the value of the best alternative minus switching costs"
+        },
+        {
+          "type": "changed",
+          "text": "Human capital becomes a data portfolio: general vs. venture-specific human capital becomes generalizable vs. market-specific data"
+        },
+        {
+          "type": "added",
+          "text": "Portfolio size, with market-specific data defined as (1 − generalizable share) × size"
+        },
+        {
+          "type": "added",
+          "text": "Industry maturity, which lowers the alternative value of generalizable data and raises the value of specific data"
+        }
+      ]
+    },
+    {
+      "parent": "lieb17",
+      "child": "focal",
+      "stated_in_focal_model": true,
+      "diff": [
+        {
+          "type": "kept",
+          "text": "The exit rule: leave when focal value falls below the value recoverable by redeploying"
+        },
+        {
+          "type": "changed",
+          "text": "The alternative use need not be one of the firm's existing businesses"
+        }
+      ]
+    },
+    {
+      "parent": "dp94",
+      "child": "focal",
+      "stated_in_focal_model": true,
+      "diff": [
+        {
+          "type": "kept",
+          "text": "The value of waiting, which lets a firm stay somewhat below its threshold under uncertainty"
+        },
+        {
+          "type": "added",
+          "text": "The claim that the propositions survive unless waiting value varies enough with portfolio composition"
+        }
+      ]
+    },
+    {
+      "parent": "gius23",
+      "child": "focal",
+      "stated_in_focal_model": true,
+      "diff": [
+        {
+          "type": "kept",
+          "text": "Opportunity cost falls on the complements data needs, not on the data itself"
+        },
+        {
+          "type": "changed",
+          "text": "Data is therefore treated as a non-scale-free resource in the threshold model"
+        }
+      ]
+    },
+    {
+      "parent": "dixit89",
+      "child": "dp94",
+      "stated_in_focal_model": false,
+      "diff": [
+        {
+          "type": "kept",
+          "text": "Exit under uncertainty and sunk costs (lineage to verify)"
+        }
+      ]
+    },
+    {
+      "parent": "dixit89",
+      "child": "lieb17",
+      "stated_in_focal_model": false,
+      "diff": [
+        {
+          "type": "kept",
+          "text": "Economic theory of exit with sunk costs (lineage to verify)"
+        }
+      ]
+    },
+    {
+      "parent": "lw10",
+      "child": "gius23",
+      "stated_in_focal_model": false,
+      "diff": [
+        {
+          "type": "kept",
+          "text": "Opportunity costs of resources across uses (lineage to verify)"
+        }
+      ]
+    },
+    {
+      "parent": "lieb17",
+      "child": "feld22",
+      "stated_in_focal_model": false,
+      "diff": [
+        {
+          "type": "kept",
+          "text": "Redeployment as a mode of exit (lineage to verify)"
+        }
+      ]
+    }
+  ]
+}
